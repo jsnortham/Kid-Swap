@@ -1,11 +1,12 @@
 let CONFIG = {
-    parents: ["Dad", "Mom"],
+    parents: ["", ""],
     colors: ["#60a5fa", "#f472b6"],
     cycleDays: 7,
     swapDay: 5, // 5 = Friday
     scheduleType: 'weekly', // 'weekly' or 'weekend'
-    anchorDate: new Date('2026-01-23T00:00:00'),
-    anchorParentIndex: 1
+    anchorDate: null,
+    anchorParentIndex: null,
+    isSynced: false
 };
 
 const state = {
@@ -19,7 +20,10 @@ function loadSettings() {
         if (parsed.scheduleType) CONFIG.scheduleType = parsed.scheduleType;
         if (parsed.swapDay !== undefined) CONFIG.swapDay = parseInt(parsed.swapDay);
         if (parsed.parents) CONFIG.parents = parsed.parents;
-        if (parsed.anchorDate) CONFIG.anchorDate = new Date(parsed.anchorDate);
+        if (parsed.anchorDate) {
+            CONFIG.anchorDate = new Date(parsed.anchorDate);
+            CONFIG.isSynced = true;
+        }
         if (parsed.anchorParentIndex !== undefined) CONFIG.anchorParentIndex = parsed.anchorParentIndex;
 
         // UI Sync
@@ -45,16 +49,35 @@ function saveSettings() {
 
 function updateSyncLabel() {
     const questionLabel = document.getElementById('sync-question-label');
-    const options = document.getElementById('current-parent-sync').options;
+    const syncDropdown = document.getElementById('current-parent-sync');
+
+    // Add placeholder if not synced
+    if (!CONFIG.isSynced) {
+        if (!document.getElementById('sync-placeholder')) {
+            const placeholder = document.createElement('option');
+            placeholder.id = 'sync-placeholder';
+            placeholder.value = "";
+            placeholder.text = "Select...";
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            syncDropdown.prepend(placeholder);
+        }
+    }
+
+    const options = syncDropdown.options;
+    const p1 = CONFIG.parents[0] || "Parent 1";
+    const p2 = CONFIG.parents[1] || "Parent 2";
+
+    const labelIndex = CONFIG.isSynced ? 0 : 1; // Adjust index based on placeholder
 
     if (CONFIG.scheduleType === 'weekend') {
         questionLabel.textContent = "Who has the next weekend?";
-        options[0].text = CONFIG.parents[0] + "'s weekend";
-        options[1].text = CONFIG.parents[1] + "'s weekend";
+        syncDropdown.querySelector('option[value="0"]').text = p1 + "'s weekend";
+        syncDropdown.querySelector('option[value="1"]').text = p2 + "'s weekend";
     } else {
         questionLabel.textContent = "Who's week is it currently?";
-        options[0].text = CONFIG.parents[0] + "'s week";
-        options[1].text = CONFIG.parents[1] + "'s week";
+        syncDropdown.querySelector('option[value="0"]').text = p1 + "'s week";
+        syncDropdown.querySelector('option[value="1"]').text = p2 + "'s week";
     }
 }
 
@@ -88,6 +111,7 @@ function updateSwapDayOptions() {
 }
 
 function syncDropdownToCurrent() {
+    if (!CONFIG.isSynced) return;
     const today = new Date();
     const currentIndex = getParentForDate(today);
     document.getElementById('current-parent-sync').value = currentIndex;
@@ -172,19 +196,24 @@ function init() {
 
     document.getElementById('current-parent-sync').addEventListener('change', (e) => {
         const selectedParentIndex = parseInt(e.target.value);
+        if (isNaN(selectedParentIndex)) return;
+
         const today = new Date();
 
         let startPoint;
         if (CONFIG.scheduleType === 'weekend') {
-            // For weekend sync, we find the NEXT weekend start (Friday)
             startPoint = getNextSwapDate(today);
         } else {
-            // For weekly sync, we find the start of the CURRENT week
             startPoint = getStartOfWeek(today, CONFIG.swapDay);
         }
 
+        CONFIG.isSynced = true;
         CONFIG.anchorDate = startPoint;
         CONFIG.anchorParentIndex = selectedParentIndex;
+
+        // Remove placeholder if it exists
+        const placeholder = document.getElementById('sync-placeholder');
+        if (placeholder) placeholder.remove();
 
         saveSettings();
         updateUI();
@@ -202,6 +231,7 @@ function getStartOfWeek(dt, swapDay) {
 }
 
 function getParentForDate(date) {
+    if (!CONFIG.isSynced || !CONFIG.anchorDate) return null;
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
 
@@ -217,7 +247,6 @@ function getParentForDate(date) {
     }
 
     // Weekend logic: Alternating weekends
-    // A weekend is defined by the week it falls in (the swapDay cycle)
     const weekStartAnchor = getStartOfWeek(CONFIG.anchorDate, CONFIG.swapDay);
     const weekStartTarget = getStartOfWeek(d, CONFIG.swapDay);
     const diffTime = weekStartTarget.getTime() - weekStartAnchor.getTime();
@@ -239,10 +268,18 @@ function getNextSwapDate(date) {
 
 function updateUI() {
     const parentIndex = getParentForDate(state.viewDate);
-    const parentName = CONFIG.parents[parentIndex];
-    const parentColor = CONFIG.colors[parentIndex];
-
     const parentDisplay = document.getElementById('current-parent-display');
+    const swapInfoEl = document.getElementById('next-swap-info');
+
+    if (parentIndex === null) {
+        parentDisplay.textContent = "Not Synced";
+        parentDisplay.style.color = "var(--text-muted)";
+        swapInfoEl.textContent = "Select 'Who has the kids' in Setup to begin";
+        return;
+    }
+
+    const parentName = CONFIG.parents[parentIndex] || `Parent ${parentIndex + 1}`;
+    const parentColor = CONFIG.colors[parentIndex];
 
     if (CONFIG.scheduleType === 'weekend') {
         // Find if viewDate is a weekend (Fri-Sun)
@@ -261,7 +298,7 @@ function updateUI() {
     parentDisplay.style.color = parentColor;
 
     const nextSwap = getNextSwapDate(state.viewDate);
-    document.getElementById('next-swap-info').textContent = `Next swap: ${nextSwap.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`;
+    swapInfoEl.textContent = `Next swap: ${nextSwap.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`;
 }
 
 function renderCalendar() {
@@ -282,19 +319,24 @@ function renderCalendar() {
         dayDiv.textContent = d.getDate();
 
         const pIndex = getParentForDate(d);
-        const color = CONFIG.colors[pIndex];
+        const color = pIndex !== null ? CONFIG.colors[pIndex] : "transparent";
+        const hasColor = pIndex !== null;
 
         // In weekend mode, only color the actual weekends
         if (CONFIG.scheduleType === 'weekend') {
             const dayNum = d.getDay();
             const isWeekend = (dayNum === 5 || dayNum === 6 || dayNum === 0);
-            if (isWeekend) {
+            if (isWeekend && hasColor) {
                 dayDiv.style.borderBottom = `3px solid ${color}`;
             } else {
                 dayDiv.style.borderBottom = `none`;
             }
         } else {
-            dayDiv.style.borderBottom = `3px solid ${color}`;
+            if (hasColor) {
+                dayDiv.style.borderBottom = `3px solid ${color}`;
+            } else {
+                dayDiv.style.borderBottom = `none`;
+            }
         }
 
         if (d.getMonth() !== state.viewDate.getMonth()) {
@@ -308,6 +350,12 @@ function renderCalendar() {
                 dayDiv.style.borderBottom = `3px solid ${color}`;
             }
         }
+
+        dayDiv.addEventListener('click', () => {
+            state.viewDate = new Date(d);
+            updateUI();
+            renderCalendar();
+        });
 
         grid.appendChild(dayDiv);
     }
