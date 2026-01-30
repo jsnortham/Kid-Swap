@@ -77,8 +77,31 @@ function updateSyncLabel() {
         }
     }
 
-    const p1 = CONFIG.parents[0] || "Parent 1";
-    const p2 = CONFIG.parents[1] || "Parent 2";
+    const p1 = CONFIG.parents[0] || "";
+    const p2 = CONFIG.parents[1] || "";
+
+    const p1Days = parseInt(document.getElementById('p1-days-select').value);
+    const p2Days = parseInt(document.getElementById('p2-days-select').value);
+
+    const p1Label = document.getElementById('p1-days-label');
+    const p2Label = document.getElementById('p2-days-label');
+
+    if (p1Label) {
+        if (p1) {
+            const suffix = p1Days === 1 ? "Day On" : "Days On";
+            p1Label.textContent = `${p1}'s ${suffix}`;
+        } else {
+            p1Label.textContent = "";
+        }
+    }
+    if (p2Label) {
+        if (p2) {
+            const suffix = p2Days === 1 ? "Day On" : "Days On";
+            p2Label.textContent = `${p2}'s ${suffix}`;
+        } else {
+            p2Label.textContent = "";
+        }
+    }
 
     if (CONFIG.scheduleType === 'split') {
         questionLabel.textContent = "Which parent is currently on duty?";
@@ -248,7 +271,10 @@ function init() {
 
     document.getElementById('p1-days-select').addEventListener('change', (e) => {
         CONFIG.p1Days = parseInt(e.target.value);
-        if (CONFIG.scheduleType === 'split') updateTurnDayOptions();
+        if (CONFIG.scheduleType === 'split') {
+            updateTurnDayOptions();
+            updateSyncLabel();
+        }
         saveSettings();
         updateUI();
         renderCalendar();
@@ -256,7 +282,10 @@ function init() {
 
     document.getElementById('p2-days-select').addEventListener('change', (e) => {
         CONFIG.p2Days = parseInt(e.target.value);
-        if (CONFIG.scheduleType === 'split') updateTurnDayOptions();
+        if (CONFIG.scheduleType === 'split') {
+            updateTurnDayOptions();
+            updateSyncLabel();
+        }
         saveSettings();
         updateUI();
         renderCalendar();
