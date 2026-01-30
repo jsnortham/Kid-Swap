@@ -25,12 +25,14 @@
                 <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">Schedule Type</label>
                 <select id="schedule-type-select"
                     style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
-                    <option value="weekly" selected>Weekly Rotation</option>
+                    <option value="weekly">Weekly Rotation</option>
                     <option value="weekend">Alternating Weekends</option>
+                    <option value="split">Split Days (On/Off)</option>
                 </select>
             </div>
 
-            <div style="margin-bottom: 1.2rem;">
+            <!-- Weekly/Weekend Swap Day Section -->
+            <div id="standard-swap-section" style="margin-bottom: 1.2rem;">
                 <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">Which day does the change
                     over take place?</label>
                 <select id="swap-day-select"
@@ -43,6 +45,34 @@
                     <option value="6">Saturday</option>
                     <option value="0">Sunday</option>
                 </select>
+            </div>
+
+            <!-- Split Days Quantity Section -->
+            <div id="split-quantity-section" style="margin-bottom: 1.2rem; display: none; gap: 1rem;">
+                <div style="flex: 1;">
+                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">P1 Days On</label>
+                    <select id="p1-days-select"
+                        style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3" selected>3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">P2 Days On</label>
+                    <select id="p2-days-select"
+                        style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4" selected>4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
             </div>
 
             <div style="display: flex; gap: 1rem; margin-bottom: 1.2rem;">
@@ -63,16 +93,28 @@
                     style="display: block; margin-bottom: 0.5rem;">Who's week is it currently?</label>
                 <select id="current-parent-sync"
                     style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
-                    <option value="0">Parent 1's week</option>
-                    <option value="1">Parent 2's week</option>
+                    <option value="0">Parent 1</option>
+                    <option value="1">Parent 2</option>
+                </select>
+            </div>
+
+            <!-- Split Day of Turn Selector -->
+            <div id="split-sync-details" style="display: none; margin-top: 1rem;">
+                <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">Which day of their turn
+                    are they on?</label>
+                <select id="current-turn-day"
+                    style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
+                    <option value="1">Day 1</option>
+                    <option value="2">Day 2</option>
+                    <option value="3">Day 3</option>
                 </select>
             </div>
         </div>
 
         <!-- Box 2: Status -->
         <div class="status-card glass" id="main-status" style="margin-bottom: 1.5rem;">
-            <div class="parent-name" id="current-parent-display" style="font-size: 2rem;">Loading...</div>
-            <div class="swap-info" id="next-swap-info" style="margin-bottom: 1rem;">Next swap: Calculating...</div>
+            <div class="parent-name" id="current-parent-display" style="font-size: 2rem;"></div>
+            <div class="swap-info" id="next-swap-info" style="margin-bottom: 1rem;"></div>
 
             <div class="calendar-header"
                 style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 0.5rem; text-align: center; font-size: 0.7rem; color: var(--text-muted); font-weight: 800;">
