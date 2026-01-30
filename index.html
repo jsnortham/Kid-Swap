@@ -47,10 +47,25 @@
                 </select>
             </div>
 
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.2rem;">
+                <div style="flex: 1;">
+                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">Parent 1</label>
+                    <input type="text" id="p1-name" value="" placeholder="e.g. Dad"
+                        style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
+                </div>
+                <div style="flex: 1;">
+                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">Parent 2</label>
+                    <input type="text" id="p2-name" value="" placeholder="e.g. Mom"
+                        style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
+                </div>
+            </div>
+
             <!-- Split Days Quantity Section -->
             <div id="split-quantity-section" style="margin-bottom: 1.2rem; display: none; gap: 1rem;">
                 <div style="flex: 1;">
-                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">P1 Days On</label>
+                    <label id="p1-days-label" class="on-duty-label"
+                        style="display: block; margin-bottom: 0.5rem; min-height: 1.2rem;">P1
+                        Days On</label>
                     <select id="p1-days-select"
                         style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
                         <option value="1">1</option>
@@ -62,7 +77,9 @@
                     </select>
                 </div>
                 <div style="flex: 1;">
-                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">P2 Days On</label>
+                    <label id="p2-days-label" class="on-duty-label"
+                        style="display: block; margin-bottom: 0.5rem; min-height: 1.2rem;">P2
+                        Days On</label>
                     <select id="p2-days-select"
                         style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
                         <option value="1">1</option>
@@ -72,19 +89,6 @@
                         <option value="5">5</option>
                         <option value="6">6</option>
                     </select>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 1rem; margin-bottom: 1.2rem;">
-                <div style="flex: 1;">
-                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">Parent 1</label>
-                    <input type="text" id="p1-name" value="" placeholder="e.g. Dad"
-                        style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
-                </div>
-                <div style="flex: 1;">
-                    <label class="on-duty-label" style="display: block; margin-bottom: 0.5rem;">Parent 2</label>
-                    <input type="text" id="p2-name" value="" placeholder="e.g. Mom"
-                        style="width: 100%; background: var(--bg-color); color: white; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px;">
                 </div>
             </div>
 
