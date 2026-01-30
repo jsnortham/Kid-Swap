@@ -3,9 +3,12 @@ let CONFIG = {
     colors: ["#60a5fa", "#f472b6"],
     cycleDays: 7,
     swapDay: 5, // 5 = Friday
-    scheduleType: 'weekly', // 'weekly' or 'weekend'
+    scheduleType: 'weekly', // 'weekly', 'weekend', or 'split'
     anchorDate: null,
     anchorParentIndex: null,
+    anchorDayOffset: 0, // Day X of their turn
+    p1Days: 3,
+    p2Days: 4,
     isSynced: false
 };
 
@@ -25,15 +28,21 @@ function loadSettings() {
             CONFIG.isSynced = true;
         }
         if (parsed.anchorParentIndex !== undefined) CONFIG.anchorParentIndex = parsed.anchorParentIndex;
+        if (parsed.anchorDayOffset !== undefined) CONFIG.anchorDayOffset = parsed.anchorDayOffset;
+        if (parsed.p1Days !== undefined) CONFIG.p1Days = parsed.p1Days;
+        if (parsed.p2Days !== undefined) CONFIG.p2Days = parsed.p2Days;
 
         // UI Sync
         document.getElementById('schedule-type-select').value = CONFIG.scheduleType;
         document.getElementById('swap-day-select').value = CONFIG.swapDay;
         document.getElementById('p1-name').value = CONFIG.parents[0];
         document.getElementById('p2-name').value = CONFIG.parents[1];
+        document.getElementById('p1-days-select').value = CONFIG.p1Days;
+        document.getElementById('p2-days-select').value = CONFIG.p2Days;
 
         updateSyncLabel();
         syncDropdownToCurrent();
+        toggleModeUI();
     }
 }
 
@@ -42,14 +51,18 @@ function saveSettings() {
         scheduleType: CONFIG.scheduleType,
         swapDay: CONFIG.swapDay,
         parents: CONFIG.parents,
-        anchorDate: CONFIG.anchorDate.toISOString(),
-        anchorParentIndex: CONFIG.anchorParentIndex
+        anchorDate: CONFIG.anchorDate ? CONFIG.anchorDate.toISOString() : null,
+        anchorParentIndex: CONFIG.anchorParentIndex,
+        anchorDayOffset: CONFIG.anchorDayOffset,
+        p1Days: CONFIG.p1Days,
+        p2Days: CONFIG.p2Days
     }));
 }
 
 function updateSyncLabel() {
     const questionLabel = document.getElementById('sync-question-label');
     const syncDropdown = document.getElementById('current-parent-sync');
+    const splitSyncDetails = document.getElementById('split-sync-details');
 
     // Add placeholder if not synced
     if (!CONFIG.isSynced) {
@@ -64,21 +77,45 @@ function updateSyncLabel() {
         }
     }
 
-    const options = syncDropdown.options;
     const p1 = CONFIG.parents[0] || "Parent 1";
     const p2 = CONFIG.parents[1] || "Parent 2";
 
-    const labelIndex = CONFIG.isSynced ? 0 : 1; // Adjust index based on placeholder
-
-    if (CONFIG.scheduleType === 'weekend') {
+    if (CONFIG.scheduleType === 'split') {
+        questionLabel.textContent = "Which parent is currently on duty?";
+        syncDropdown.querySelector('option[value="0"]').text = p1;
+        syncDropdown.querySelector('option[value="1"]').text = p2;
+        splitSyncDetails.style.display = 'block';
+        updateTurnDayOptions();
+    } else if (CONFIG.scheduleType === 'weekend') {
         questionLabel.textContent = "Who has the next weekend?";
         syncDropdown.querySelector('option[value="0"]').text = p1 + "'s weekend";
         syncDropdown.querySelector('option[value="1"]').text = p2 + "'s weekend";
+        splitSyncDetails.style.display = 'none';
     } else {
         questionLabel.textContent = "Who's week is it currently?";
         syncDropdown.querySelector('option[value="0"]').text = p1 + "'s week";
         syncDropdown.querySelector('option[value="1"]').text = p2 + "'s week";
+        splitSyncDetails.style.display = 'none';
     }
+}
+
+function updateTurnDayOptions() {
+    const turnDaySelect = document.getElementById('current-turn-day');
+    const selectedParent = parseInt(document.getElementById('current-parent-sync').value);
+    const dayCount = (selectedParent === 1) ? CONFIG.p2Days : CONFIG.p1Days;
+
+    let html = '';
+    for (let i = 1; i <= dayCount; i++) {
+        html += `<option value="${i}">Day ${i} of ${dayCount}</option>`;
+    }
+    turnDaySelect.innerHTML = html;
+}
+
+function toggleModeUI() {
+    const type = CONFIG.scheduleType;
+    document.getElementById('standard-swap-section').style.display = type === 'split' ? 'none' : 'block';
+    document.getElementById('split-quantity-section').style.display = type === 'split' ? 'flex' : 'none';
+    updateSyncLabel();
 }
 
 function updateSwapDayOptions() {
@@ -128,7 +165,7 @@ function init() {
     document.getElementById('schedule-type-select').addEventListener('change', (e) => {
         CONFIG.scheduleType = e.target.value;
         updateSwapDayOptions();
-        updateSyncLabel();
+        toggleModeUI();
         saveSettings();
         updateUI();
         renderCalendar();
@@ -195,30 +232,70 @@ function init() {
     });
 
     document.getElementById('current-parent-sync').addEventListener('change', (e) => {
-        const selectedParentIndex = parseInt(e.target.value);
-        if (isNaN(selectedParentIndex)) return;
+        updateTurnDayOptions();
+    });
 
-        const today = new Date();
+    document.getElementById('current-turn-day').addEventListener('change', () => {
+        performSync();
+    });
 
+    // Update single-click sync for Weekly/Weekend, but need multi-step for Split
+    document.getElementById('current-parent-sync').addEventListener('change', (e) => {
+        if (CONFIG.scheduleType !== 'split') {
+            performSync();
+        }
+    });
+
+    document.getElementById('p1-days-select').addEventListener('change', (e) => {
+        CONFIG.p1Days = parseInt(e.target.value);
+        if (CONFIG.scheduleType === 'split') updateTurnDayOptions();
+        saveSettings();
+        updateUI();
+        renderCalendar();
+    });
+
+    document.getElementById('p2-days-select').addEventListener('change', (e) => {
+        CONFIG.p2Days = parseInt(e.target.value);
+        if (CONFIG.scheduleType === 'split') updateTurnDayOptions();
+        saveSettings();
+        updateUI();
+        renderCalendar();
+    });
+}
+
+function performSync() {
+    const parentVal = document.getElementById('current-parent-sync').value;
+    if (parentVal === "") return;
+    const selectedParentIndex = parseInt(parentVal);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (CONFIG.scheduleType === 'split') {
+        const turnDay = parseInt(document.getElementById('current-turn-day').value);
+        CONFIG.isSynced = true;
+        CONFIG.anchorDate = today;
+        CONFIG.anchorParentIndex = selectedParentIndex;
+        CONFIG.anchorDayOffset = turnDay;
+    } else {
         let startPoint;
         if (CONFIG.scheduleType === 'weekend') {
             startPoint = getNextSwapDate(today);
         } else {
             startPoint = getStartOfWeek(today, CONFIG.swapDay);
         }
-
         CONFIG.isSynced = true;
         CONFIG.anchorDate = startPoint;
         CONFIG.anchorParentIndex = selectedParentIndex;
+        CONFIG.anchorDayOffset = 1; // Not used for weekly/weekend, but set for consistency
+    }
 
-        // Remove placeholder if it exists
-        const placeholder = document.getElementById('sync-placeholder');
-        if (placeholder) placeholder.remove();
+    const placeholder = document.getElementById('sync-placeholder');
+    if (placeholder) placeholder.remove();
 
-        saveSettings();
-        updateUI();
-        renderCalendar();
-    });
+    saveSettings();
+    updateUI();
+    renderCalendar();
 }
 
 function getStartOfWeek(dt, swapDay) {
@@ -235,18 +312,22 @@ function getParentForDate(date) {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
 
-    // Weekly logic: Every 7 days
-    if (CONFIG.scheduleType === 'weekly') {
-        const weekStartAnchor = getStartOfWeek(CONFIG.anchorDate, CONFIG.swapDay);
-        const weekStartTarget = getStartOfWeek(d, CONFIG.swapDay);
-        const diffTime = weekStartTarget.getTime() - weekStartAnchor.getTime();
-        const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
-        let parentIndex = (CONFIG.anchorParentIndex + diffWeeks) % 2;
-        if (parentIndex < 0) parentIndex += 2;
-        return parentIndex;
+    if (CONFIG.scheduleType === 'split') {
+        const cycleTotal = CONFIG.p1Days + CONFIG.p2Days;
+        const diffDays = Math.floor((d.getTime() - CONFIG.anchorDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // anchorDayOffset is 1-based (Day 1 of turn)
+        // We normalize everything to 0-based for the math
+        let dayInSequence = (diffDays + (CONFIG.anchorDayOffset - 1)) % cycleTotal;
+        if (CONFIG.anchorParentIndex === 1) {
+            dayInSequence = (dayInSequence + CONFIG.p1Days) % cycleTotal;
+        }
+
+        if (dayInSequence < 0) dayInSequence += cycleTotal;
+        return (dayInSequence < CONFIG.p1Days) ? 0 : 1;
     }
 
-    // Weekend logic: Alternating weekends
+    // Weekly/Weekend logic (standard 7-day cycle)
     const weekStartAnchor = getStartOfWeek(CONFIG.anchorDate, CONFIG.swapDay);
     const weekStartTarget = getStartOfWeek(d, CONFIG.swapDay);
     const diffTime = weekStartTarget.getTime() - weekStartAnchor.getTime();
@@ -259,6 +340,18 @@ function getParentForDate(date) {
 function getNextSwapDate(date) {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
+
+    if (CONFIG.scheduleType === 'split') {
+        let currentParent = getParentForDate(d);
+        if (currentParent === null) return d;
+
+        let checkDate = new Date(d);
+        while (getParentForDate(checkDate) === currentParent) {
+            checkDate.setDate(checkDate.getDate() + 1);
+        }
+        return checkDate;
+    }
+
     const currentDay = d.getDay();
     let daysToWait = (CONFIG.swapDay - currentDay + 7) % 7;
     if (daysToWait === 0) daysToWait = 7;
@@ -272,9 +365,9 @@ function updateUI() {
     const swapInfoEl = document.getElementById('next-swap-info');
 
     if (parentIndex === null) {
-        parentDisplay.textContent = "Not Synced";
+        parentDisplay.textContent = "";
         parentDisplay.style.color = "var(--text-muted)";
-        swapInfoEl.textContent = "Select 'Who has the kids' in Setup to begin";
+        swapInfoEl.textContent = "";
         return;
     }
 
